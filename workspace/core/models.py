@@ -58,3 +58,20 @@ class MediaFile:
     path: Path
     data: bytes
     mime_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class PdfPage:
+    """Extracted text for a single PDF page."""
+
+    number: int
+    text: str
+    used_ocr: bool
+
+
+@dataclass(frozen=True, slots=True)
+class PdfTextResult:
+    """Outcome of extracting text from a PDF, page by page."""
+
+    path: Path
+    pages: list[PdfPage]

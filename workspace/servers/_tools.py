@@ -12,13 +12,14 @@ from typing import Callable, Iterable, Iterator
 
 from fastmcp import FastMCP
 
-from workspace.core.models import EditResult, FileInfo, GrepMatch, MediaFile, ReadResult
+from workspace.core.models import EditResult, FileInfo, GrepMatch, MediaFile, PdfTextResult, ReadResult
 from workspace.core.ops import TextEdit, append, copy, copy_tree, delete_file, edit_text, edit_text_many
 from workspace.core.ops import exists, glob, head
 from workspace.core.ops import list as list_directory_op
-from workspace.core.ops import list_allowed, mkdir, move, read, read_many, read_media, read_range
+from workspace.core.ops import list_allowed, mkdir, move, ocr_image, read, read_many, read_media
+from workspace.core.ops import read_pdf_text, read_range
 from workspace.core.ops import replace_lines, rmdir, stat, tail
-from workspace.core.ops import truncate, walk, write, write_media
+from workspace.core.ops import truncate, walk, write, write_media, write_pdf
 from workspace.core.ops.grep import grep
 from workspace.internal.config import WORKSPACE_ROOT
 
@@ -76,6 +77,16 @@ def _media_file(media: MediaFile) -> dict[str, object]:
         "path": _relative(media.path),
         "mime_type": media.mime_type,
         "data_base64": base64.b64encode(media.data).decode("ascii"),
+    }
+
+
+def _pdf_text_result(result: PdfTextResult) -> dict[str, object]:
+    return {
+        "path": _relative(result.path),
+        "pages": [
+            {"number": page.number, "text": page.text, "used_ocr": page.used_ocr}
+            for page in result.pages
+        ],
     }
 
 
@@ -325,3 +336,34 @@ def register_tools(mcp: FastMCP, *, scope_guard: Callable[[str], Callable] | Non
     def grep_text(pattern: str, path: str = ".", limit: int = 200) -> dict[str, object]:
         """Search text with ripgrep inside the workspace."""
         return _matches(grep(_root(), pattern, path), limit)
+
+    @mcp.tool
+    @scoped(READ_SCOPE)
+    def ocr_image_file(path: str, language: str = "eng+spa") -> str:
+        """Extract text from an image file (PNG, JPEG, etc.) using OCR."""
+        return ocr_image(_root(), path, language=language)
+
+    @mcp.tool
+    @scoped(READ_SCOPE)
+    def read_pdf_text_file(path: str, ocr_fallback: bool = True, language: str = "eng+spa") -> dict[str, object]:
+        """Extract text from a PDF, page by page.
+
+        Pages with an embedded text layer are read directly. When
+        ocr_fallback is True (default), pages with no text layer (scanned
+        or image-only pages) are rendered and passed through OCR instead;
+        check each page's 'used_ocr' field to see which path was taken.
+        """
+        return _pdf_text_result(read_pdf_text(_root(), path, ocr_fallback=ocr_fallback, language=language))
+
+    @mcp.tool
+    @scoped(WRITE_SCOPE)
+    def create_pdf(path: str, markdown: str) -> dict[str, bool]:
+        """Create or replace a PDF file rendered from Markdown-formatted text.
+
+        Lightweight renderer, not full Markdown: supports headings (#, ##,
+        ###), bullet lists (- or *), bold (**text**), italic (*text*), and
+        plain paragraphs. Tables, links, images, and code blocks are not
+        supported.
+        """
+        write_pdf(_root(), path, markdown)
+        return {"created": True}

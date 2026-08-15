@@ -11,7 +11,7 @@ El núcleo (`workspace.core`) es una **biblioteca Python pura**, sin ninguna dep
 
 ## Características
 
-- 26 herramientas MCP para lectura, escritura, exploración y administración de archivos, incluyendo binarios (imágenes, audio) y edición por contenido con diff y modo dry-run.
+- 29 herramientas MCP para lectura, escritura, exploración y administración de archivos, incluyendo binarios (imágenes, audio), PDF (extracción de texto con fallback a OCR, y creación desde Markdown), y edición por contenido con diff y modo dry-run.
 - Rutas limitadas a un workspace configurado; protección frente a rutas absolutas, `..` y escapes mediante symlinks.
 - Autenticación configurable en tres modos: `none`, `api-key` y `oidc`.
 - Scopes `filesystem:read`, `filesystem:write` y `filesystem:delete` que controlan las herramientas en modo OIDC.
@@ -25,6 +25,7 @@ El núcleo (`workspace.core`) es una **biblioteca Python pura**, sin ninguna dep
 | Lectura | `read_file`, `read_files`, `read_file_range`, `read_file_head`, `read_file_tail`, `read_media_file` |
 | Escritura | `write_file`, `write_media_file`, `append_file`, `replace_file_lines`, `edit_file_text`, `edit_file_text_many`, `truncate_file` |
 | Administración | `create_directory`, `remove_directory`, `delete_file_path`, `copy_path`, `copy_directory_tree`, `move_path` |
+| PDF / OCR | `read_pdf_text_file`, `create_pdf`, `ocr_image_file` |
 
 Notas sobre algunas herramientas menos obvias:
 
@@ -33,6 +34,9 @@ Notas sobre algunas herramientas menos obvias:
 - `read_files` lee varios archivos en una sola llamada; un fallo en uno no aborta el resto.
 - `read_media_file` / `write_media_file` son la vía para binarios (imágenes, audio, PDFs, lo que sea): base64 + MIME type adivinado por extensión.
 - `walk_paths`, `glob_paths` y `grep_text` devuelven como máximo 1000 resultados. Para búsquedas recursivas con `glob_paths`, use patrones como `**/*.py`.
+- `read_pdf_text_file` extrae el texto de un PDF página por página. Si una página no tiene capa de texto (PDF escaneado), hace fallback automático a OCR con Tesseract (parámetro `ocr_fallback`, activado por defecto); cada página indica si se usó OCR (`used_ocr`).
+- `ocr_image_file` corre el mismo OCR pero sobre una imagen suelta (PNG, JPEG, etc.), independiente de cualquier PDF.
+- `create_pdf` genera un PDF a partir de texto en Markdown liviano (encabezados, listas, negrita/cursiva) — no es un conversor Markdown completo (sin tablas, links ni bloques de código).
 
 ## Inicio rápido con Docker
 
@@ -196,7 +200,7 @@ docs/                 Especificación, implementación y despliegue ampliados
 
 ## Desarrollo
 
-El proyecto requiere Python 3.11 o superior. Sus dependencias de ejecución están definidas en `pyproject.toml`; `grep_text` requiere además el binario `rg` (ripgrep), incluido en la imagen Docker.
+El proyecto requiere Python 3.11 o superior. Sus dependencias de ejecución están definidas en `pyproject.toml`; `grep_text` requiere además el binario `rg` (ripgrep), y `read_pdf_text_file`/`ocr_image_file` requieren el binario `tesseract` (con los idiomas `eng` y `spa`), ambos incluidos en la imagen Docker.
 
 Instale las dependencias de test y ejecute la suite:
 

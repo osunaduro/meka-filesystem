@@ -43,6 +43,7 @@ Public API:
     BackendUnavailableError
     WatchBackendUnavailableError
     SearchBackendUnavailableError
+    OcrBackendUnavailableError
     OperationCancelledError
 
 Dependencies:
@@ -148,6 +149,11 @@ class WatchBackendUnavailableError(BackendError):
 
 class SearchBackendUnavailableError(BackendError):
     """The filesystem search backend is not available."""
+    pass
+
+
+class OcrBackendUnavailableError(BackendError):
+    """The OCR backend (Tesseract) is not installed or not on PATH."""
     pass
 
 

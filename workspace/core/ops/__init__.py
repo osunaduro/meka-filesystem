@@ -24,9 +24,11 @@ from .list import list
 from .list_allowed import list_allowed
 from .mkdir import mkdir
 from .move import move
+from .ocr_image import ocr_image
 from .read import read
 from .read_many import read_many
 from .read_media import read_media
+from .read_pdf_text import read_pdf_text
 from .read_range import read_range
 from .replace_lines import replace_lines
 from .rmdir import rmdir
@@ -36,6 +38,7 @@ from .truncate import truncate
 from .walk import walk
 from .write import write
 from .write_media import write_media
+from .write_pdf import write_pdf
 
 __all__ = [
     "append",
@@ -52,8 +55,10 @@ __all__ = [
     "list_allowed",
     "mkdir",
     "move",
+    "ocr_image",
     "read_many",
     "read_media",
+    "read_pdf_text",
     "read_range",
     "replace_lines",
     "rmdir",
@@ -64,4 +69,5 @@ __all__ = [
     "walk",
     "write",
     "write_media",
+    "write_pdf",
 ]

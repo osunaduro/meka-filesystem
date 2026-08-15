@@ -10,6 +10,7 @@ Este paquete reúne las funciones que realizan trabajo sobre el workspace. Cada 
 | Lectura | `read`, `read_range`, `head`, `tail`, `read_many`, `read_media` |
 | Escritura | `write`, `write_media`, `append`, `replace_lines`, `edit_text`, `edit_text_many`, `truncate` |
 | Gestión | `mkdir`, `rmdir`, `delete_file`, `copy`, `copy_tree`, `move` |
+| PDF / OCR | `read_pdf_text`, `write_pdf`, `ocr_image` |
 
 Las operaciones no aplican `chmod` ni `chown`: el acceso y la propiedad de los archivos dependen del usuario efectivo del proceso y de los permisos del filesystem montado.
 
@@ -19,6 +20,9 @@ Las operaciones no aplican `chmod` ni `chown`: el acceso y la propiedad de los a
 - `glob` usa la sintaxis de `pathlib`. Para recorrer subdirectorios use `**`, por ejemplo `**/*.md`.
 - `walk`, `glob` y `grep` devuelven iteradores para que el consumidor pueda limitar o procesar resultados progresivamente.
 - `grep` requiere el ejecutable `rg` (ripgrep) disponible en el entorno.
+- `read_pdf_text` extrae texto de un PDF página por página con PyMuPDF; si una página no tiene capa de texto, con `ocr_fallback=True` (default) la renderiza a imagen y aplica OCR con `pytesseract`, que a su vez requiere el ejecutable `tesseract` disponible en el entorno.
+- `ocr_image` aplica el mismo OCR sobre una imagen suelta, independiente de cualquier PDF.
+- `write_pdf` renderiza texto Markdown liviano (encabezados, listas, negrita/cursiva) a PDF con `reportlab`; no es un conversor Markdown completo.
 - `edit_text` localiza el texto a reemplazar por contenido exacto (no por número de línea) y admite `dry_run=True` para previsualizar el diff sin escribir en disco.
 - `edit_text_many` aplica una lista de `TextEdit` en secuencia sobre una copia en memoria; si alguna falla, no se escribe nada (todo o nada).
 - `read_many` continúa aunque falle la lectura de algún path individual; el error queda en el resultado correspondiente en vez de abortar el lote.
