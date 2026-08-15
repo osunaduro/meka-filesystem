@@ -19,6 +19,9 @@ venv/
 # Local Claude Code settings (machine-specific, not project config)
 .claude/settings.local.json
 
+# Internal MEKA project-management metadata — not part of the distributed project
+.meka/
+
 # Local build output
 /mcpb-bundles/
 *.mcpb
