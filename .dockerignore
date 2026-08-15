@@ -1,0 +1,9 @@
+# Runtime configuration and secrets must never enter the build context.
+**/.env
+
+# Local artifacts
+.git/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/

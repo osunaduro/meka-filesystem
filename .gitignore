@@ -1,0 +1,29 @@
+# Runtime secrets (any real .env, at any depth — .env.example is unaffected)
+**/.env
+
+# Python build and test artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Editor / OS cruft
+.DS_Store
+.vscode/
+.idea/
+
+# Local Claude Code settings (machine-specific, not project config)
+.claude/settings.local.json
+
+# Local build output
+/mcpb-bundles/
+*.mcpb
+
+# Scratch/persistence directory — not part of the distributed package.
+# Keep its own README so the convention stays documented.
+/home/*
+!/home/README.md

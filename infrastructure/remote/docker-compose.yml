@@ -1,0 +1,38 @@
+services:
+  filesystem-mcp:
+    build:
+      context: ../..
+      dockerfile: infrastructure/Dockerfile
+
+    container_name: filesystem-mcp-${PROJECT_NAME}
+
+    restart: unless-stopped
+    init: true
+    user: "${MEKA_UID:-1000}:${MEKA_GID:-1000}"
+    expose:
+      - "8000"
+
+    environment:
+      MEKA_WORKSPACE_ROOT: /data/workspace
+      MEKA_AUTH_MODE: ${MEKA_AUTH_MODE:-api-key}
+      MEKA_API_KEY: ${MEKA_API_KEY:-}
+      MEKA_OIDC_ISSUER: ${MEKA_OIDC_ISSUER:-}
+      MEKA_OIDC_AUDIENCE: ${MEKA_OIDC_AUDIENCE:-}
+      MEKA_OIDC_JWKS_URL: ${MEKA_OIDC_JWKS_URL:-}
+      MEKA_OIDC_RESOURCE_URL: ${MEKA_OIDC_RESOURCE_URL:-}
+
+    volumes:
+      - ${MEKA_WORKSPACE_PATH:?MEKA_WORKSPACE_PATH must point to the client workspace directory}:/data/workspace:rw
+
+    networks:
+      meka-network:
+        aliases:
+          - filesystem-mcp
+
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  meka-network:
+    external: true
+    name: meka-network
