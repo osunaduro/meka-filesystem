@@ -6,7 +6,7 @@ Provider/Application creados en Authentik (`https://auth.mekaweb.com.ar`) para e
 - Provider: "MEKA Filesystem" (pk 1)
 - Client type: confidential
 - Client ID: `rAzXQclaDqQGJO6YlE9aWAmfkAfFzaA01gX3vYgf`
-- Client Secret: `eCXM1u2vqijm1skewTGklBTOffsHIrlllvixDQTgj4xNFp3pL8OZpaf4NX7gGw3toJqrt9joIHT3xIfkA9oiJCZklBnehRmLNjeqS5lk0V6omz3LuQTwslLsZXtooiTI`
+- Client Secret: no versionado — ver [`oidc-credentials.local.md`](oidc-credentials.local.md) (gitignored) en esta misma carpeta, o consultarlo directamente en el Provider "MEKA Filesystem" dentro de Authentik. (El secret anterior, que estuvo commiteado en texto plano en este archivo, fue rotado — ver nota en "Pendiente".)
 - Redirect URI configurado: regex `^https://claude\.ai/.*$` (provisorio — la versión de Authentik instalada, 2025.2.4, no soporta registro dinámico de clientes, así que no sabemos la ruta exacta que usa Claude hasta probarlo. Si al agregar el conector en Claude falla el redirect, avisame la URL exacta del error y ajusto este regex a la ruta real, más restrictivo).
 
 `filesystem-mcp` quedó en modo `oidc` (`meka-filesystem/infrastructure/remote/.env`):
@@ -31,4 +31,4 @@ MEKA_OIDC_RESOURCE_URL=https://archivo.mekaweb.com.ar/mcp
 ## Pendiente
 
 - Authentik está en 2025.2.4 (última disponible: 2026.5.6). Versiones más nuevas podrían agregar registro dinámico de clientes, lo que simplificaría este flujo. No se actualizó en esta sesión — evaluar aparte.
-- El `client_secret` queda en texto plano en este archivo y en el `.env` de meka-filesystem. Mismo nivel de sensibilidad que el resto de `meka-infra/.env` — no versionar en git sin cifrar.
+- **2026-08-15**: el `client_secret` había quedado commiteado en texto plano en este archivo, en un repo público (`osunaduro/meka-filesystem`). Se rotó el secret en Authentik y se sacó el valor de este archivo (queda solo en `oidc-credentials.local.md`, no versionado). El secret viejo, aunque sigue recuperable en el historial de git, ya no sirve para nada porque fue reemplazado.

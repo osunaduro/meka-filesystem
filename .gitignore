@@ -1,6 +1,9 @@
 # Runtime secrets (any real .env, at any depth — .env.example is unaffected)
 **/.env
 
+# OAuth client secrets (never versioned, unlike the redacted setup doc)
+**/oidc-credentials.local.md
+
 # Python build and test artifacts
 __pycache__/
 *.py[cod]
