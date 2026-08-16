@@ -70,3 +70,34 @@ def test_edit_text_invalid_expected_occurrences_raises(tmp_path):
 
     with pytest.raises(ValueError):
         edit_text(tmp_path, "file.txt", "hello", "bye", expected_occurrences=0)
+
+
+def test_edit_text_no_match_attaches_closest_match_for_near_miss(tmp_path):
+    _write(tmp_path, "file.py", "def greet(name):\n    print('hello ' + name)\n")
+
+    with pytest.raises(NoMatchError) as excinfo:
+        edit_text(
+            tmp_path,
+            "file.py",
+            "def greet(name):\n     print('hello ' + name)\n",  # extra space before print
+            "def greet(name):\n    print('hi ' + name)\n",
+        )
+
+    assert excinfo.value.closest_match is not None
+    assert excinfo.value.similarity is not None
+    assert excinfo.value.similarity > 0.6
+    assert "hello" in excinfo.value.closest_match
+    # The hint is folded into the string form, so it reaches MCP clients
+    # even if they only surface str(exc).
+    assert "Closest match" in str(excinfo.value)
+
+
+def test_edit_text_no_match_for_unrelated_text_has_no_hint(tmp_path):
+    _write(tmp_path, "file.txt", "hello world\n")
+
+    with pytest.raises(NoMatchError) as excinfo:
+        edit_text(tmp_path, "file.txt", "completely unrelated Klingon opera libretto", "x")
+
+    assert excinfo.value.closest_match is None
+    assert excinfo.value.similarity is None
+    assert "Closest match" not in str(excinfo.value)

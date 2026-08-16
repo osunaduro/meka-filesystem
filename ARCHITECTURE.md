@@ -47,7 +47,7 @@ workspace/
 - `core/ops/` → operaciones puras que reciben `root: Path` + ruta relativa.
 - `internal/config/config.py` → `WORKSPACE_ROOT` y configuración de autenticación.
 - `internal/path/resolver.py` → evita escapes del workspace (rutas absolutas, `..`, symlinks).
-- `servers/_tools.py` → registro único de las 26 herramientas MCP.
+- `servers/_tools.py` → registro único de las 35 herramientas MCP.
 - `servers/filesystem_http.py` → transporte HTTP/OAuth.
 - `servers/filesystem_stdio.py` → transporte STDIO local.
 - `servers/filesystem_server.py` → alias temporal de compatibilidad (`filesystem_http`).

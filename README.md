@@ -11,7 +11,7 @@ El núcleo (`workspace.core`) es una **biblioteca Python pura**, sin ninguna dep
 
 ## Características
 
-- 29 herramientas MCP para lectura, escritura, exploración y administración de archivos, incluyendo binarios (imágenes, audio), PDF (extracción de texto con fallback a OCR, y creación desde Markdown), y edición por contenido con diff y modo dry-run.
+- 35 herramientas MCP para lectura, escritura, exploración y administración de archivos, incluyendo binarios (imágenes, audio), PDF (extracción de texto con fallback a OCR, creación desde Markdown, e inserción/eliminación de páginas en PDFs existentes), Excel (.xlsx) y DOCX nativos, y edición por contenido con diff, modo dry-run, y diagnóstico de coincidencia aproximada cuando el texto buscado no matchea exacto.
 - Rutas limitadas a un workspace configurado; protección frente a rutas absolutas, `..` y escapes mediante symlinks.
 - Autenticación configurable en tres modos: `none`, `api-key` y `oidc`.
 - Scopes `filesystem:read`, `filesystem:write` y `filesystem:delete` que controlan las herramientas en modo OIDC.
@@ -25,18 +25,23 @@ El núcleo (`workspace.core`) es una **biblioteca Python pura**, sin ninguna dep
 | Lectura | `read_file`, `read_files`, `read_file_range`, `read_file_head`, `read_file_tail`, `read_media_file` |
 | Escritura | `write_file`, `write_media_file`, `append_file`, `replace_file_lines`, `edit_file_text`, `edit_file_text_many`, `truncate_file` |
 | Administración | `create_directory`, `remove_directory`, `delete_file_path`, `copy_path`, `copy_directory_tree`, `move_path` |
-| PDF / OCR | `read_pdf_text_file`, `create_pdf`, `ocr_image_file` |
+| PDF / OCR | `read_pdf_text_file`, `create_pdf`, `edit_pdf_pages`, `ocr_image_file` |
+| Excel | `read_excel_file`, `write_excel_file` |
+| DOCX | `read_docx_outline`, `create_docx`, `edit_docx_text` |
 
 Notas sobre algunas herramientas menos obvias:
 
-- `edit_file_text` reemplaza texto localizándolo por contenido exacto (no por número de línea), con `dry_run` para previsualizar el diff sin escribir, y `expected_occurrences` para evitar reemplazos ambiguos.
-- `edit_file_text_many` aplica varias ediciones de ese tipo sobre el mismo archivo de forma atómica: si alguna falla, no se escribe nada.
+- `edit_file_text` reemplaza texto localizándolo por contenido exacto (no por número de línea), con `dry_run` para previsualizar el diff sin escribir, y `expected_occurrences` para evitar reemplazos ambiguos. Si el texto buscado no matchea exacto (típicamente por espacios o indentación), el error de "sin coincidencia" incluye la región más parecida encontrada en el archivo y el porcentaje de similitud, como pista para corregir el `old_text`.
+- `edit_file_text_many` aplica varias ediciones de ese tipo sobre el mismo archivo de forma atómica: si alguna falla, no se escribe nada. Tiene el mismo diagnóstico de coincidencia aproximada que `edit_file_text`.
 - `read_files` lee varios archivos en una sola llamada; un fallo en uno no aborta el resto.
 - `read_media_file` / `write_media_file` son la vía para binarios (imágenes, audio, PDFs, lo que sea): base64 + MIME type adivinado por extensión.
 - `walk_paths`, `glob_paths` y `grep_text` devuelven como máximo 1000 resultados. Para búsquedas recursivas con `glob_paths`, use patrones como `**/*.py`.
 - `read_pdf_text_file` extrae el texto de un PDF página por página. Si una página no tiene capa de texto (PDF escaneado), hace fallback automático a OCR con Tesseract (parámetro `ocr_fallback`, activado por defecto); cada página indica si se usó OCR (`used_ocr`).
 - `ocr_image_file` corre el mismo OCR pero sobre una imagen suelta (PNG, JPEG, etc.), independiente de cualquier PDF.
-- `create_pdf` genera un PDF a partir de texto en Markdown liviano (encabezados, listas, negrita/cursiva) — no es un conversor Markdown completo (sin tablas, links ni bloques de código).
+- `create_pdf` / `create_docx` generan un archivo a partir del mismo subconjunto liviano de Markdown (encabezados, listas, negrita/cursiva) — no es un conversor Markdown completo (sin tablas, links ni bloques de código).
+- `edit_pdf_pages` inserta o elimina páginas de un PDF ya existente, todo o nada (si alguna operación falla, el archivo original queda intacto). Los números de página son base 1, igual que `read_pdf_text_file`. Para insertar contenido nuevo, primero generalo como PDF aparte con `create_pdf` y después insertá sus páginas.
+- `read_excel_file` devuelve la hoja pedida (o la activa) como array 2D, más la lista de todas las hojas del libro; `cell_range` (ej. `"A1:D100"`) limita la lectura. `write_excel_file` solo reemplaza la hoja indicada — el resto del libro no se toca.
+- `read_docx_outline` devuelve párrafos (con su estilo) y tablas (como filas de texto) en el orden real del documento. `edit_docx_text` busca dentro de cada párrafo/celda y, al encontrar coincidencia, reescribe todo el párrafo como una única corrida de texto — esto puede aplanar formato a nivel de corrida (ej. "solo esta palabra en negrita") dentro de ese párrafo puntual.
 
 ## Inicio rápido con Docker
 
@@ -100,8 +105,8 @@ El servidor valida la firma del JWT contra el JWKS, `issuer`, `audience` y expir
 
 | Scope | Herramientas |
 | --- | --- |
-| `filesystem:read` | Existencia, metadata, listado, recorridos, búsqueda y lectura (texto y binaria). |
-| `filesystem:write` | Escritura, append, edición por contenido o línea, truncate, creación, copia y movimiento. |
+| `filesystem:read` | Existencia, metadata, listado, recorridos, búsqueda, lectura (texto y binaria), lectura de Excel y de outline DOCX. |
+| `filesystem:write` | Escritura, append, edición por contenido o línea, truncate, creación, copia, movimiento, edición de páginas PDF, escritura de Excel, y creación/edición de DOCX. |
 | `filesystem:delete` | Eliminación de archivos y directorios. |
 
 Publique además `/.well-known/oauth-protected-resource/mcp` para el descubrimiento MCP (utilizable por clientes como ChatGPT).
@@ -200,7 +205,7 @@ docs/                 Especificación, implementación y despliegue ampliados
 
 ## Desarrollo
 
-El proyecto requiere Python 3.11 o superior. Sus dependencias de ejecución están definidas en `pyproject.toml`; `grep_text` requiere además el binario `rg` (ripgrep), y `read_pdf_text_file`/`ocr_image_file` requieren el binario `tesseract` (con los idiomas `eng` y `spa`), ambos incluidos en la imagen Docker.
+El proyecto requiere Python 3.11 o superior. Sus dependencias de ejecución están definidas en `pyproject.toml`; `grep_text` requiere además el binario `rg` (ripgrep), y `read_pdf_text_file`/`ocr_image_file` requieren el binario `tesseract` (con los idiomas `eng` y `spa`), ambos incluidos en la imagen Docker. El soporte de Excel (`openpyxl`) y DOCX (`python-docx`) es Python puro — no agrega binarios de sistema.
 
 Instale las dependencias de test y ejecute la suite:
 
@@ -209,7 +214,7 @@ python3 -m pip install -e '.[test]'
 python3 -m pytest -q
 ```
 
-Los tests cubren la configuración de los tres modos de autenticación, el middleware `api-key` (401 / pase de acceso), el comportamiento del Resource Server OIDC (scopes y ruta de descubrimiento), y las operaciones del núcleo (`core/ops`): edición por contenido, edición atómica en lote, lectura en lote y lectura/escritura binaria.
+Los tests cubren la configuración de los tres modos de autenticación, el middleware `api-key` (401 / pase de acceso), el comportamiento del Resource Server OIDC (scopes y ruta de descubrimiento), y las operaciones del núcleo (`core/ops`): edición por contenido con diagnóstico de coincidencia aproximada, edición atómica en lote, lectura en lote, lectura/escritura binaria, extracción de texto de PDF con fallback a OCR, inserción/eliminación de páginas PDF, y lectura/escritura/edición de Excel y DOCX.
 
 ## Contacto
 

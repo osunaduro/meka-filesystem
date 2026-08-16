@@ -47,6 +47,7 @@ from pathlib import Path
 
 from workspace.core.errors import AmbiguousMatchError, NoMatchError
 from workspace.core.models import EditResult
+from workspace.core.ops._fuzzy_match import closest_match
 from workspace.internal.path import resolve as resolve_path
 
 
@@ -106,7 +107,10 @@ def edit_text(
     Raises
     ------
     NoMatchError
-        ``old_text`` was not found in the file.
+        ``old_text`` was not found in the file. If a similar-enough region
+        exists elsewhere in the file, it is attached as
+        ``closest_match``/``similarity`` to help diagnose near-misses
+        (typically whitespace or indentation drift).
 
     AmbiguousMatchError
         ``old_text`` matched a different number of times than
@@ -138,7 +142,12 @@ def edit_text(
     occurrences = original.count(old_text)
 
     if occurrences == 0:
-        raise NoMatchError(f"No match for the requested text in {path}.")
+        window, ratio = closest_match(original, old_text)
+        raise NoMatchError(
+            f"No match for the requested text in {path}.",
+            closest_match=window,
+            similarity=ratio,
+        )
 
     if occurrences != expected_occurrences:
         raise AmbiguousMatchError(

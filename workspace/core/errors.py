@@ -34,6 +34,8 @@ Public API:
     EditError
     NoMatchError
     AmbiguousMatchError
+    WorkbookError
+    SheetNotFoundError
     DirectoryError
     NotADirectoryError
     DirectoryNotFoundError
@@ -168,10 +170,38 @@ class EditError(FileError):
 
 
 class NoMatchError(EditError):
-    """The requested search text was not found in the file."""
-    pass
+    """The requested search text was not found in the file.
+
+    When a near-miss is found (via fuzzy matching), it is attached as
+    ``closest_match``/``similarity`` so callers can surface a helpful diff
+    instead of a bare "not found".
+    """
+
+    def __init__(self, message: str, *, closest_match: str | None = None, similarity: float | None = None) -> None:
+        super().__init__(message)
+        self.closest_match = closest_match
+        self.similarity = similarity
+
+    def __str__(self) -> str:
+        base = super().__str__()
+        if not self.closest_match:
+            return base
+        return (
+            f"{base} Closest match found ({self.similarity:.0%} similar): "
+            f"{self.closest_match!r}"
+        )
 
 
 class AmbiguousMatchError(EditError):
     """The requested search text matched a different number of times than expected."""
+    pass
+
+
+class WorkbookError(FileError):
+    """Base exception for Excel workbook errors."""
+    pass
+
+
+class SheetNotFoundError(WorkbookError):
+    """The requested sheet does not exist in the workbook."""
     pass

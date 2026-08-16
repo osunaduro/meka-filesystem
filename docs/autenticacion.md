@@ -118,8 +118,8 @@ La implementación define únicamente los siguientes scopes:
 
 | Scope | Herramientas |
 | --- | --- |
-| `filesystem:read` | Existencia, metadata, listado, recorridos, búsqueda y lectura. |
-| `filesystem:write` | Escritura, append, reemplazo de líneas, truncate, creación, copia y movimiento. |
+| `filesystem:read` | Existencia, metadata, listado, recorridos, búsqueda, lectura, lectura de Excel y de outline DOCX. |
+| `filesystem:write` | Escritura, append, reemplazo de líneas, truncate, creación, copia, movimiento, edición de páginas PDF, escritura de Excel, y creación/edición de DOCX. |
 | `filesystem:delete` | Eliminación de archivos y directorios. |
 
 Los scopes controlan herramientas, no workspaces. Una instancia siempre opera

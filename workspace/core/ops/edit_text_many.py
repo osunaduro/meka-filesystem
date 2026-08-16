@@ -49,6 +49,7 @@ from pathlib import Path
 
 from workspace.core.errors import AmbiguousMatchError, NoMatchError
 from workspace.core.models import EditResult
+from workspace.core.ops._fuzzy_match import closest_match
 from workspace.internal.path import resolve as resolve_path
 
 
@@ -156,8 +157,11 @@ def edit_text_many(
         occurrences = current.count(edit.old_text)
 
         if occurrences == 0:
+            window, ratio = closest_match(current, edit.old_text)
             raise NoMatchError(
-                f"No match for edit #{index + 1} of {len(edits)} in {path}."
+                f"No match for edit #{index + 1} of {len(edits)} in {path}.",
+                closest_match=window,
+                similarity=ratio,
             )
 
         if occurrences != edit.expected_occurrences:

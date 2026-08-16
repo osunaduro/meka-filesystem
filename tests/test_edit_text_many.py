@@ -78,3 +78,19 @@ def test_edit_text_many_requires_at_least_one_edit(tmp_path):
 
     with pytest.raises(ValueError):
         edit_text_many(tmp_path, "file.txt", [])
+
+
+def test_edit_text_many_no_match_attaches_closest_match(tmp_path):
+    _write(tmp_path, "file.txt", "the quick brown fox jumps\n")
+
+    edits = [
+        TextEdit(old_text="the quick brown fox jumps", new_text="the slow brown fox jumps"),
+        TextEdit(old_text="the slow  brown fox jumps", new_text="x"),  # double space typo
+    ]
+    with pytest.raises(NoMatchError) as excinfo:
+        edit_text_many(tmp_path, "file.txt", edits)
+
+    # Matched against content *after* the first edit, so the hint should
+    # point at the post-edit text, not the original file content.
+    assert excinfo.value.closest_match is not None
+    assert "slow" in excinfo.value.closest_match

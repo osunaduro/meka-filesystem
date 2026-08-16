@@ -1,11 +1,12 @@
-"""Unit tests for workspace.core.ops.write_pdf, read_pdf_text, and ocr_image."""
+"""Unit tests for workspace.core.ops.write_pdf, read_pdf_text, edit_pdf, and ocr_image."""
 
 import io
 
 import pymupdf
+import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from workspace.core.ops import ocr_image, read_pdf_text, write_pdf
+from workspace.core.ops import PdfDeleteOperation, PdfInsertOperation, edit_pdf, ocr_image, read_pdf_text, write_pdf
 
 
 def _image_with_text(text: str) -> bytes:
@@ -71,3 +72,50 @@ def test_ocr_image_extracts_text_from_a_standalone_image(tmp_path):
     text = ocr_image(tmp_path, "note.png")
 
     assert "STANDALONE" in text.upper()
+
+
+def test_edit_pdf_delete_pages_removes_them(tmp_path):
+    # write_pdf renders everything onto a single page, so build a real
+    # 3-page PDF directly to exercise per-page deletion.
+    document = pymupdf.open()
+    for label in ("One", "Two", "Three"):
+        page = document.new_page()
+        page.insert_text((72, 72), label)
+    document.save(tmp_path / "multi.pdf")
+    document.close()
+
+    edit_pdf(tmp_path, "multi.pdf", [PdfDeleteOperation(pages=[2])])
+
+    result = read_pdf_text(tmp_path, "multi.pdf")
+    assert len(result.pages) == 2
+    assert "One" in result.pages[0].text
+    assert "Three" in result.pages[1].text
+
+
+def test_edit_pdf_insert_pages_from_source(tmp_path):
+    write_pdf(tmp_path, "base.pdf", "# Base\n")
+    write_pdf(tmp_path, "extra.pdf", "# Inserted\n")
+
+    edit_pdf(tmp_path, "base.pdf", [PdfInsertOperation(at=1, source="extra.pdf")])
+
+    result = read_pdf_text(tmp_path, "base.pdf")
+    assert len(result.pages) == 2
+    assert "Inserted" in result.pages[0].text
+    assert "Base" in result.pages[1].text
+
+
+def test_edit_pdf_invalid_page_index_raises_and_leaves_file_untouched(tmp_path):
+    write_pdf(tmp_path, "doc.pdf", "# Only page\n")
+    original_bytes = (tmp_path / "doc.pdf").read_bytes()
+
+    with pytest.raises(ValueError):
+        edit_pdf(tmp_path, "doc.pdf", [PdfDeleteOperation(pages=[5])])
+
+    assert (tmp_path / "doc.pdf").read_bytes() == original_bytes
+
+
+def test_edit_pdf_requires_at_least_one_operation(tmp_path):
+    write_pdf(tmp_path, "doc.pdf", "# Only page\n")
+
+    with pytest.raises(ValueError):
+        edit_pdf(tmp_path, "doc.pdf", [])

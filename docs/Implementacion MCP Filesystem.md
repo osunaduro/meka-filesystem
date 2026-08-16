@@ -57,7 +57,7 @@ workspace/
 │   ├── config/config.py          # MEKA_WORKSPACE_ROOT y UID/GID
 │   └── path/resolver.py          # Boundary de seguridad de rutas
 └── servers/
-    ├── _tools.py                # Definición compartida de las 20 herramientas
+    ├── _tools.py                # Definición compartida de las 35 herramientas
     ├── filesystem_http.py       # Adaptador HTTP/OAuth (FastMCP + Uvicorn)
     ├── filesystem_stdio.py      # Adaptador STDIO (clientes locales)
     └── filesystem_server.py     # Alias de compatibilidad temporal
@@ -90,15 +90,23 @@ configuración y transforma resultados a JSON.
 ## Herramientas MCP
 
 - Información y exploración: `path_exists`, `stat_path`, `list_directory`,
-  `walk_paths`, `glob_paths`, `grep_text`.
-- Lectura: `read_file`, `read_file_range`, `read_file_head`, `read_file_tail`.
-- Escritura: `write_file`, `append_file`, `replace_file_lines`,
+  `list_allowed_directories`, `walk_paths`, `glob_paths`, `grep_text`.
+- Lectura: `read_file`, `read_files`, `read_file_range`, `read_file_head`,
+  `read_file_tail`, `read_media_file`.
+- Escritura: `write_file`, `write_media_file`, `append_file`,
+  `replace_file_lines`, `edit_file_text`, `edit_file_text_many`,
   `truncate_file`.
 - Administración: `create_directory`, `remove_directory`,
   `delete_file_path`, `copy_path`, `copy_directory_tree`, `move_path`.
+- PDF / OCR: `read_pdf_text_file`, `create_pdf`, `edit_pdf_pages`,
+  `ocr_image_file`.
+- Excel: `read_excel_file`, `write_excel_file`.
+- DOCX: `read_docx_outline`, `create_docx`, `edit_docx_text`.
 
 `walk_paths`, `glob_paths` y `grep_text` reciben un límite de resultados;
-el máximo permitido es 1000.
+el máximo permitido es 1000. `edit_file_text`/`edit_file_text_many` incluyen
+un diagnóstico de coincidencia aproximada cuando el texto buscado no matchea
+exacto.
 
 ## Autenticación
 

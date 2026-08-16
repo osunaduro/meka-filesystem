@@ -24,9 +24,9 @@ Public API:
     write_pdf
 
 Dependencies:
-    re
     reportlab
     pathlib
+    workspace.core.ops._markdown_lite
     workspace.internal.path
 
 Thread Safe:
@@ -40,23 +40,29 @@ Pure:
 # Imports
 # ==========================================================================
 
-import re
 from pathlib import Path
 
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Flowable, ListFlowable, ListItem, Paragraph, SimpleDocTemplate, Spacer
 
+from workspace.core.ops._markdown_lite import Blank, BulletItem, Heading, parse_blocks, parse_inline
 from workspace.internal.path import resolve as resolve_path
 
-_BOLD = re.compile(r"\*\*(.+?)\*\*")
-_ITALIC = re.compile(r"(?<!\*)\*(?!\*)(.+?)\*(?!\*)")
+_HEADING_STYLE = {1: "Heading1", 2: "Heading2", 3: "Heading3"}
 
 
-def _inline_markup(text: str) -> str:
-    text = _BOLD.sub(r"<b>\1</b>", text)
-    text = _ITALIC.sub(r"<i>\1</i>", text)
-    return text
+def _reportlab_markup(text: str) -> str:
+    """Render inline bold/italic runs as ReportLab's `<b>`/`<i>` tags."""
+    rendered = ""
+    for run in parse_inline(text):
+        piece = run.text
+        if run.bold:
+            piece = f"<b>{piece}</b>"
+        if run.italic:
+            piece = f"<i>{piece}</i>"
+        rendered += piece
+    return rendered
 
 
 # ==========================================================================
@@ -92,33 +98,25 @@ def write_pdf(root: Path, path: str | Path, markdown: str) -> None:
             return
         story.append(
             ListFlowable(
-                [ListItem(Paragraph(_inline_markup(item), styles["Normal"])) for item in bullet_items],
+                [ListItem(Paragraph(_reportlab_markup(item), styles["Normal"])) for item in bullet_items],
                 bulletType="bullet",
             )
         )
         story.append(Spacer(1, 6))
         bullet_items.clear()
 
-    for raw_line in markdown.splitlines():
-        line = raw_line.rstrip()
-
-        if not line:
+    for block in parse_blocks(markdown):
+        if isinstance(block, Blank):
             flush_bullets()
             story.append(Spacer(1, 6))
-        elif line.startswith("### "):
+        elif isinstance(block, Heading):
             flush_bullets()
-            story.append(Paragraph(_inline_markup(line[4:]), styles["Heading3"]))
-        elif line.startswith("## "):
-            flush_bullets()
-            story.append(Paragraph(_inline_markup(line[3:]), styles["Heading2"]))
-        elif line.startswith("# "):
-            flush_bullets()
-            story.append(Paragraph(_inline_markup(line[2:]), styles["Heading1"]))
-        elif line.startswith("- ") or line.startswith("* "):
-            bullet_items.append(line[2:])
+            story.append(Paragraph(_reportlab_markup(block.text), styles[_HEADING_STYLE[block.level]]))
+        elif isinstance(block, BulletItem):
+            bullet_items.append(block.text)
         else:
             flush_bullets()
-            story.append(Paragraph(_inline_markup(line), styles["Normal"]))
+            story.append(Paragraph(_reportlab_markup(block.text), styles["Normal"]))
 
     flush_bullets()
 

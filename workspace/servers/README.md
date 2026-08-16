@@ -1,21 +1,21 @@
 # Servidores MCP
 
 Este paquete contiene los adaptadores de transporte para el dominio filesystem.
-Cada adaptador crea una aplicación FastMCP que expone las mismas 20 herramientas,
+Cada adaptador crea una aplicación FastMCP que expone las mismas 35 herramientas,
 definidas una sola vez en `_tools.py`.
 
 ## Contenido
 
 | Archivo | Transporte | Uso |
 | --- | --- | --- |
-| `_tools.py` | — | Definición compartida de las 20 herramientas y helpers de serialización. |
+| `_tools.py` | — | Definición compartida de las 35 herramientas y helpers de serialización. |
 | `filesystem_http.py` | HTTP / OAuth | Servidor remoto ejecutado con Uvicorn (ChatGPT y otros clientes remotos). |
 | `filesystem_stdio.py` | STDIO | Punto de entrada local para Claude Desktop, VS Code, Cursor, Windsurf. |
 | `filesystem_server.py` | HTTP | Alias temporal de compatibilidad que re-exporta `filesystem_http`. |
 
 ## Responsabilidades
 
-- Exponen las mismas 20 herramientas MCP en ambos transportes.
+- Exponen las mismas 35 herramientas MCP en ambos transportes.
 - Obtienen el root autorizado desde `MEKA_WORKSPACE_ROOT`.
 - Convierten modelos internos a respuestas serializables.
 - Limitan resultados de búsquedas y recorridos a un máximo de 1000 elementos.

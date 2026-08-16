@@ -75,3 +75,41 @@ class PdfTextResult:
 
     path: Path
     pages: list[PdfPage]
+
+
+@dataclass(frozen=True, slots=True)
+class ExcelSheetResult:
+    """A rectangular range of cell values read from one Excel sheet."""
+
+    path: Path
+    sheet_name: str
+    sheet_names: list[str]
+    data: list[list[object]]
+    total_rows: int
+    total_cols: int
+
+
+@dataclass(frozen=True, slots=True)
+class DocxParagraph:
+    """A single paragraph in a DOCX outline."""
+
+    index: int
+    style: str
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class DocxTable:
+    """A single table in a DOCX outline."""
+
+    index: int
+    rows: list[list[str]]
+
+
+@dataclass(frozen=True, slots=True)
+class DocxOutlineResult:
+    """Outcome of reading a DOCX file as a structured outline."""
+
+    path: Path
+    paragraphs: list[DocxParagraph]
+    tables: list[DocxTable]

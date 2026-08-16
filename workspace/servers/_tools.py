@@ -12,14 +12,16 @@ from typing import Callable, Iterable, Iterator
 
 from fastmcp import FastMCP
 
-from workspace.core.models import EditResult, FileInfo, GrepMatch, MediaFile, PdfTextResult, ReadResult
-from workspace.core.ops import TextEdit, append, copy, copy_tree, delete_file, edit_text, edit_text_many
+from workspace.core.models import DocxOutlineResult, EditResult, ExcelSheetResult, FileInfo, GrepMatch, MediaFile
+from workspace.core.models import PdfTextResult, ReadResult
+from workspace.core.ops import PdfDeleteOperation, PdfInsertOperation, TextEdit, append, copy, copy_tree
+from workspace.core.ops import delete_file, edit_docx, edit_pdf, edit_text, edit_text_many
 from workspace.core.ops import exists, glob, head
 from workspace.core.ops import list as list_directory_op
-from workspace.core.ops import list_allowed, mkdir, move, ocr_image, read, read_many, read_media
+from workspace.core.ops import list_allowed, mkdir, move, ocr_image, read, read_docx, read_excel, read_many, read_media
 from workspace.core.ops import read_pdf_text, read_range
 from workspace.core.ops import replace_lines, rmdir, stat, tail
-from workspace.core.ops import truncate, walk, write, write_media, write_pdf
+from workspace.core.ops import truncate, walk, write, write_docx, write_excel, write_media, write_pdf
 from workspace.core.ops.grep import grep
 from workspace.internal.config import WORKSPACE_ROOT
 
@@ -87,6 +89,27 @@ def _pdf_text_result(result: PdfTextResult) -> dict[str, object]:
             {"number": page.number, "text": page.text, "used_ocr": page.used_ocr}
             for page in result.pages
         ],
+    }
+
+
+def _excel_sheet_result(result: ExcelSheetResult) -> dict[str, object]:
+    return {
+        "path": _relative(result.path),
+        "sheet_name": result.sheet_name,
+        "sheet_names": result.sheet_names,
+        "data": result.data,
+        "total_rows": result.total_rows,
+        "total_cols": result.total_cols,
+    }
+
+
+def _docx_outline_result(result: DocxOutlineResult) -> dict[str, object]:
+    return {
+        "path": _relative(result.path),
+        "paragraphs": [
+            {"index": p.index, "style": p.style, "text": p.text} for p in result.paragraphs
+        ],
+        "tables": [{"index": t.index, "rows": t.rows} for t in result.tables],
     }
 
 
@@ -367,3 +390,106 @@ def register_tools(mcp: FastMCP, *, scope_guard: Callable[[str], Callable] | Non
         """
         write_pdf(_root(), path, markdown)
         return {"created": True}
+
+    @mcp.tool
+    @scoped(WRITE_SCOPE)
+    def edit_pdf_pages(path: str, operations: list[dict[str, object]]) -> dict[str, bool]:
+        """Insert or delete pages in an existing PDF, applied atomically in order.
+
+        Each operation is either:
+        {"type": "insert", "at": <1-based page number>, "source": "<workspace-relative path to another PDF>"}
+        {"type": "delete", "pages": [<1-based page numbers>]}
+
+        Page numbers are 1-based, matching read_pdf_text_file. To insert new
+        content rendered from Markdown, first create it as a standalone PDF
+        with create_pdf, then insert its pages here. If any operation fails,
+        nothing is written and the original file is left untouched.
+        """
+        parsed_operations: list[PdfInsertOperation | PdfDeleteOperation] = []
+        for operation in operations:
+            op_type = operation.get("type")
+            if op_type == "insert":
+                parsed_operations.append(
+                    PdfInsertOperation(at=int(operation["at"]), source=str(operation["source"]))
+                )
+            elif op_type == "delete":
+                parsed_operations.append(
+                    PdfDeleteOperation(pages=[int(page) for page in operation["pages"]])
+                )
+            else:
+                raise ValueError(f"Unsupported PDF page operation type: {op_type!r}")
+
+        edit_pdf(_root(), path, parsed_operations)
+        return {"edited": True}
+
+    # ------------------------------------------------------------------
+    # Excel
+    # ------------------------------------------------------------------
+
+    @mcp.tool
+    @scoped(READ_SCOPE)
+    def read_excel_file(path: str, sheet: str | None = None, cell_range: str | None = None) -> dict[str, object]:
+        """Read an Excel sheet (.xlsx) as a 2D array of cell values.
+
+        If 'sheet' is omitted, reads the workbook's active sheet.
+        'cell_range' (e.g. "A1:D100") limits the read to that range; omit
+        to read the sheet's whole used range. The result also lists every
+        sheet name in the workbook, for discovery.
+        """
+        return _excel_sheet_result(read_excel(_root(), path, sheet=sheet, cell_range=cell_range))
+
+    @mcp.tool
+    @scoped(WRITE_SCOPE)
+    def write_excel_file(
+        path: str, data: list[list[object]], sheet: str = "Sheet1", start_cell: str = "A1"
+    ) -> dict[str, bool]:
+        """Write a 2D array of values into an Excel sheet, starting at start_cell.
+
+        Creates the workbook if it does not exist. If it does, only the
+        target sheet is replaced or created — every other sheet already in
+        the workbook is preserved untouched.
+        """
+        write_excel(_root(), path, data, sheet=sheet, start_cell=start_cell)
+        return {"written": True}
+
+    # ------------------------------------------------------------------
+    # DOCX
+    # ------------------------------------------------------------------
+
+    @mcp.tool
+    @scoped(READ_SCOPE)
+    def read_docx_outline(path: str) -> dict[str, object]:
+        """Read a .docx file as a structured outline: paragraphs (with style
+        name) and tables (as rows of cell text), in document order.
+        """
+        return _docx_outline_result(read_docx(_root(), path))
+
+    @mcp.tool
+    @scoped(WRITE_SCOPE)
+    def create_docx(path: str, markdown: str) -> dict[str, bool]:
+        """Create or replace a .docx file rendered from Markdown-formatted text.
+
+        Same lightweight subset as create_pdf: headings, bullet lists, bold,
+        italic. Tables, links, images, and code blocks are not supported.
+        """
+        write_docx(_root(), path, markdown)
+        return {"created": True}
+
+    @mcp.tool
+    @scoped(WRITE_SCOPE)
+    def edit_docx_text(
+        path: str, old_text: str, new_text: str, expected_occurrences: int = 1, dry_run: bool = False
+    ) -> dict[str, object]:
+        """Replace text matched by content within a .docx (searches each
+        paragraph and table cell; old_text must fall within a single
+        paragraph, it cannot span two).
+
+        When a match is found, the whole containing paragraph is rewritten
+        as a single run — this can flatten run-level formatting (e.g. a
+        single bolded word) within that specific paragraph. Set
+        dry_run=True to preview the diff without writing.
+        """
+        result = edit_docx(
+            _root(), path, old_text, new_text, expected_occurrences=expected_occurrences, dry_run=dry_run
+        )
+        return _edit_result(result)

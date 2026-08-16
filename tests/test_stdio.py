@@ -24,7 +24,7 @@ def test_stdio_exposes_same_tools_as_http(none_mode):
 
     stdio_names, http_names = asyncio.run(run())
     assert stdio_names == http_names
-    assert len(stdio_names) == 29
+    assert len(stdio_names) == 35
 
 
 def test_stdio_has_no_http_transport_imports(none_mode):
